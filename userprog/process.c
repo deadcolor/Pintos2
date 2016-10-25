@@ -20,6 +20,7 @@
 
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
+static void parse_line(const char *cmdline, void **esp);
 
 /* Starts a new thread running a user program loaded from
    FILENAME.  The new thread may be scheduled (and may even exit)
@@ -232,8 +233,17 @@ load (const char *file_name, void (**eip) (void), void **esp)
     goto done;
   process_activate ();
 
+  /* Receive real_file name from unparsed file_name*/
+  char *file_name_real= malloc(strlen(file_name)+1);
+  char *save_ptr;
+  strlcpy (file_name_real, file_name, strlen(file_name)+1);
+  file_name_real = strtok_r(file_name_real," ",&save_ptr);
+
   /* Open executable file. */
-  file = filesys_open (file_name);
+  file = filesys_open (file_name_real);
+
+  /* deallocate file_name_real */
+  free(file_name_real);
   if (file == NULL) 
     {
       printf ("load: %s: open failed\n", file_name);
@@ -433,6 +443,14 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
       upage += PGSIZE;
     }
   return true;
+}
+
+
+/* Parse command line and setup stack */
+static void 
+parse_line(const char *cmdline, void **esp)
+{
+	//TODO:: implement stack by parsing command line
 }
 
 /* Create a minimal stack by mapping a zeroed page at the top of

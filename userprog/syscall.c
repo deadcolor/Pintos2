@@ -15,7 +15,7 @@ syscall_init (void)
 static void
 syscall_handler (struct intr_frame *f UNUSED) 
 {
-    //TODO: We should check whether (int *)f->esp is valid pointer or not
+	//TODO: We should check whether (int *)f->esp is valid pointer or not
 	int call_number = *(int *)f->esp;
 
 	switch(call_number)
@@ -60,6 +60,4 @@ syscall_handler (struct intr_frame *f UNUSED)
 			//not implemented
 			break;
 	}			
-
-	thread_exit ();
 }
