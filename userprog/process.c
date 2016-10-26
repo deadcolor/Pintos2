@@ -207,7 +207,7 @@ struct Elf32_Phdr
 #define PF_W 2          /* Writable. */
 #define PF_R 4          /* Readable. */
 
-static bool setup_stack (void **esp);
+static bool setup_stack (void **esp, const char *file_name);
 static bool validate_segment (const struct Elf32_Phdr *, struct file *);
 static bool load_segment (struct file *file, off_t ofs, uint8_t *upage,
                           uint32_t read_bytes, uint32_t zero_bytes,
@@ -323,7 +323,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
     }
 
   /* Set up stack. */
-  if (!setup_stack (esp))
+  if (!setup_stack (esp, file_name))
     goto done;
 
   /* Start address. */
@@ -450,13 +450,73 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 static void 
 parse_line(const char *cmdline, void **esp)
 {
-	//TODO:: implement stack by parsing command line
+  char *save_ptr;
+  char *token;
+  int count = 0;
+  int i = 0;
+  char *copiedLine = (char *)malloc(strlen(cmdline)+1);
+  char *copiedLine2 = (char *)malloc(strlen(cmdline)+1);
+
+  strlcpy(copiedLine, cmdline, strlen(cmdline)+1);
+  strlcpy(copiedLine2, cmdline, strlen(cmdline)+1);
+
+  //Count how many words consist line
+  for(token = strtok_r(copiedLine," ",&save_ptr); token !=NULL; token = strtok_r(NULL," ",&save_ptr))
+	count= count+1;  
+ 
+  ASSERT(count>0); 
+  int *argument_address = calloc(count, sizeof(int));
+
+
+  //Save argument data in stack 
+  for(token = strtok_r(copiedLine2," ",&save_ptr); token !=NULL; token = strtok_r(NULL," ",&save_ptr))
+  {
+	*esp = *esp - (strlen(token)+1);
+	memcpy(*esp,token,strlen(token)+1);
+	argument_address[i++] = *esp;		//memorize argument address to save later 
+  }
+
+  //Word-Align
+  int remainByte = (int)*esp % 4;		//Word Size : 4
+  char fillZero = 0;
+  if(remainByte > 0) 		
+  {
+	*esp = *esp - remainByte;
+	memcpy(*esp,&fillZero, remainByte);
+  }
+
+  //Fill zero by 4 byte
+  *esp = *esp - 4;
+  memcpy(*esp,&fillZero, 4);
+
+  //Save argument address in stack
+  for(i = count-1 ; i>=0; i--)
+  {
+	*esp = *esp - 4;
+	memcpy(*esp, &argument_address[i], 4);
+  }  
+
+  //Push starting point of Argument address
+  int startPoint = *esp;
+  *esp = *esp - 4;
+  memcpy(*esp,&startPoint,4);
+
+  //Push count
+  *esp = *esp - 4;
+  memcpy(*esp, &count, 4);
+
+  //Push zero
+  *esp = *esp - 4;
+  memcpy(*esp, &fillZero, 4);
+
+  free(copiedLine);
+  free(copiedLine2);	
 }
 
 /* Create a minimal stack by mapping a zeroed page at the top of
    user virtual memory. */
 static bool
-setup_stack (void **esp) 
+setup_stack (void **esp, const char* file_name) 
 {
   uint8_t *kpage;
   bool success = false;
@@ -466,7 +526,10 @@ setup_stack (void **esp)
     {
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
       if (success)
-        *esp = PHYS_BASE;
+      {  
+	*esp = PHYS_BASE;
+	parse_line(esp,file_name);	
+      }
       else
         palloc_free_page (kpage);
     }
