@@ -464,9 +464,7 @@ parse_line(const char *cmdline, void **esp)
   for(token = strtok_r(copiedLine," ",&save_ptr); token !=NULL; token = strtok_r(NULL," ",&save_ptr))
 	count= count+1;  
  
-  ASSERT(count>0); 
   int *argument_address = calloc(count, sizeof(int));
-
 
   //Save argument data in stack 
   for(token = strtok_r(copiedLine2," ",&save_ptr); token !=NULL; token = strtok_r(NULL," ",&save_ptr))

@@ -19,7 +19,6 @@ syscall_handler (struct intr_frame *f)
 {
 	//TODO: We should check whether (int *)f->esp is valid pointer or not
 	int call_number = *(int *)f->esp;
-	ASSERT (0);
 
 	switch(call_number)
 	{
@@ -31,12 +30,13 @@ syscall_handler (struct intr_frame *f)
 			break;
 		case SYS_EXEC:
 		{
+			
 			ASSERT (0);
 			char *str = *(char **)(f->esp + 4);
 			f->eax = process_execute (str);
-		}
 			//not implemented
 			break;
+		}
 		case SYS_WAIT:
 			//not implemented
 			break;
@@ -44,21 +44,21 @@ syscall_handler (struct intr_frame *f)
 		{
 			char *str = *(char **)(f->esp + 4);//file name
 			int size = *(int *)(f->esp + 8);//size
-		}
 			//not implemented
 			break;
+		}
 		case SYS_REMOVE:
 		{
 			char *str = *(char **)(f->esp + 4);//file name
-		}
 			//not implemented
 			break;
+		}
 		case SYS_OPEN:
 		{
 			char *str = *(char **)(f->esp + 4);//file name
-		}
 			//not implemented
 			break;
+		}
 		case SYS_FILESIZE:
 			//not implemented
 			break;
@@ -76,8 +76,8 @@ syscall_handler (struct intr_frame *f)
 			break;
 		case SYS_CLOSE:
 		{
-		}
 			//not implemented
-			break;
+			break; 
+		}
 	}			
 }
