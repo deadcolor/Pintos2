@@ -469,7 +469,10 @@ init_thread (struct thread *t, const char *name, int priority)
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
   t->magic = THREAD_MAGIC;
-  list_push_back (&all_list, &t->allelem);
+  list_push_back (&all_list, &t->allelem); 
+  list_init (&t->file_list);
+  t->fd_count = 3;//initialize. 0 is STDIN, 1 is STDOUT, 2 is ERROR
+  t->exec = NULL;
 }
 
 /* Allocates a SIZE-byte frame at the top of thread T's stack and

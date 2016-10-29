@@ -5,6 +5,9 @@
 #include "threads/thread.h"
 #include "userprog/process.h"
 #include "filesys/filesys.h"
+#include "filesys/file.h"
+#include "list.h"
+#include "threads/vaddr.h"
 
 static void syscall_handler (struct intr_frame *);
 
@@ -14,24 +17,65 @@ syscall_init (void)
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
 }
 
+/* check whether address is under PHYS_BASE(in user stack)
+*/
+static bool
+is_valid_address(void *address)
+{
+  //TODO : not completed
+  if(!is_user_vaddr(address))
+  {
+	//Call SYSCALL_EXIT
+	return 0;
+  }
+	return 1;		
+}
+
+struct thread_file
+{
+	int fd;
+	struct file *file;
+	struct list_elem elem;
+};
+
+struct thread_file *get_file_list(int fd)
+{
+	struct list_elem *e;
+	struct thread_file *F;
+	struct thread_file *f;
+	struct list *list = &thread_current()->file_list;
+	F = NULL;
+	for( e = list_begin (list); e != list_end (list); e = list_next (e))
+	{
+		f = list_entry (e, struct thread_file, elem);
+		if (f->fd == fd)
+		{
+			F = f;
+			break;
+		}
+	}
+	return F;
+}
+
+
 static void
 syscall_handler (struct intr_frame *f) 
 {
-	//TODO: We should check whether (int *)f->esp is valid pointer or not
 	int call_number = *(int *)f->esp;
 
+	is_valid_address((void *) f->esp);
+	
 	switch(call_number)
 	{
 		case SYS_HALT:
 			shutdown_power_off();
 			break;
 		case SYS_EXIT:
+			thread_exit();
 			//not implemented
 			break;
 		case SYS_EXEC:
 		{
-			
-			ASSERT (0);
 			char *str = *(char **)(f->esp + 4);
 			f->eax = process_execute (str);
 			//not implemented
@@ -44,18 +88,31 @@ syscall_handler (struct intr_frame *f)
 		{
 			char *str = *(char **)(f->esp + 4);//file name
 			int size = *(int *)(f->esp + 8);//size
+			f->eax = filesys_create (str, size);
 			//not implemented
 			break;
 		}
 		case SYS_REMOVE:
 		{
 			char *str = *(char **)(f->esp + 4);//file name
+			filesys_remove (str);
 			//not implemented
 			break;
 		}
 		case SYS_OPEN:
 		{
 			char *str = *(char **)(f->esp + 4);//file name
+			struct file *file = filesys_open (str);
+			if(file == NULL)
+				f->eax = -1;
+			else
+			{
+				struct thread_file *thread_file = malloc(sizeof(*thread_file));
+				thread_file->fd = thread_current()->fd_count++;
+				thread_file->file = file;
+				list_push_back (&thread_current()->file_list, &thread_file->elem);
+				f->eax = thread_file->fd;
+			}
 			//not implemented
 			break;
 		}
@@ -63,11 +120,38 @@ syscall_handler (struct intr_frame *f)
 			//not implemented
 			break;
 		case SYS_READ:
+		{
+			int fd = *(int *)(f->esp + 4);
+			void *buffer = *(char **)(f->esp + 8);
+			int size = *(int *)(f->esp + 12);
+			if (get_file_list (fd) == NULL)
+				f->eax = -1;
+			else
+				f->eax = file_read (get_file_list (fd)->file, buffer, size);
+		
 			//not implemented
 			break;
+		}
 		case SYS_WRITE:
+		{
+			int fd = *(int *)(f->esp + 4);
+			void *buffer = *(char **)(f->esp + 8);
+			int size = *(int *)(f->esp + 12);
+			if (fd == 0)
+			{
+				putbuf ((char *)buffer, (size_t)size);
+				f->eax = -1;
+			}
+			else
+			{
+				if (get_file_list (fd) == NULL)
+					f->eax = -1;
+				else
+					f->eax = file_write(get_file_list (fd)->file, buffer, size);
+			}
 			//not implemented
 			break;
+		}
 		case SYS_SEEK:
 			//not implemented
 			break;
@@ -76,6 +160,14 @@ syscall_handler (struct intr_frame *f)
 			break;
 		case SYS_CLOSE:
 		{
+			int fd = *(int *)( f->esp + 4);
+			struct thread_file *thread_file = get_file_list (fd);
+			if( thread_file != NULL)
+			{
+				file_close (thread_file->file);
+				list_remove (&thread_file->elem);	
+				free (thread_file);
+			}
 			//not implemented
 			break; 
 		}

@@ -99,7 +99,7 @@ start_process (void *file_name_)
 int
 process_wait (tid_t child_tid UNUSED) 
 {
-  while(1);
+  //while(1);
   return -1;
 }
 
@@ -239,6 +239,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
   strlcpy (file_name_real, file_name, strlen(file_name)+1);
   file_name_real = strtok_r(file_name_real," ",&save_ptr);
 
+printf ("file_name_real: %s\n",file_name_real);
   /* Open executable file. */
   file = filesys_open (file_name_real);
 
@@ -249,8 +250,8 @@ load (const char *file_name, void (**eip) (void), void **esp)
       printf ("load: %s: open failed\n", file_name);
       goto done; 
     }
-
-  /* Read and verify executable header. */
+ 
+ /* Read and verify executable header. */
   if (file_read (file, &ehdr, sizeof ehdr) != sizeof ehdr
       || memcmp (ehdr.e_ident, "\177ELF\1\1\1", 7)
       || ehdr.e_type != 2
@@ -526,7 +527,7 @@ setup_stack (void **esp, const char* file_name)
       if (success)
       {  
 	*esp = PHYS_BASE;
-	parse_line(esp,file_name);	
+	parse_line(file_name,esp);	
       }
       else
         palloc_free_page (kpage);

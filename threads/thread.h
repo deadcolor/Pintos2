@@ -93,6 +93,10 @@ struct thread
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
 
+    /* Project 2 */
+    struct list file_list;		/* file that was opened in thread */
+    int fd_count;			/* Increase file descriptor as new file opened  */
+    struct file *executable_self;	/* executable file */
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
