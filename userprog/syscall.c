@@ -89,14 +89,12 @@ syscall_handler (struct intr_frame *f)
 			char *str = *(char **)(f->esp + 4);//file name
 			int size = *(int *)(f->esp + 8);//size
 			f->eax = filesys_create (str, size);
-			//not implemented
 			break;
 		}
 		case SYS_REMOVE:
 		{
 			char *str = *(char **)(f->esp + 4);//file name
 			filesys_remove (str);
-			//not implemented
 			break;
 		}
 		case SYS_OPEN:
@@ -107,20 +105,28 @@ syscall_handler (struct intr_frame *f)
 				f->eax = -1;
 			else
 			{
-				struct thread_file *thread_file = malloc(sizeof(*thread_file));
+				struct thread_file *thread_file = malloc(sizeof(thread_file));
 				thread_file->fd = thread_current()->fd_count++;
 				thread_file->file = file;
 				list_push_back (&thread_current()->file_list, &thread_file->elem);
 				f->eax = thread_file->fd;
 			}
-			//not implemented
 			break;
 		}
 		case SYS_FILESIZE:
-			//not implemented
+		{
+			int fd = *(int *)(f->esp + 4);
+			if (get_file_list (fd) == NULL)
+				f->eax = -1;
+			else
+			{
+				f->eax = file_length(get_file_list (fd)->file);
+			}
 			break;
+		}
 		case SYS_READ:
 		{
+			//TODO:: check valid pointer fd, buffer, size
 			int fd = *(int *)(f->esp + 4);
 			void *buffer = *(char **)(f->esp + 8);
 			int size = *(int *)(f->esp + 12);
@@ -128,8 +134,6 @@ syscall_handler (struct intr_frame *f)
 				f->eax = -1;
 			else
 				f->eax = file_read (get_file_list (fd)->file, buffer, size);
-		
-			//not implemented
 			break;
 		}
 		case SYS_WRITE:
@@ -137,7 +141,7 @@ syscall_handler (struct intr_frame *f)
 			int fd = *(int *)(f->esp + 4);
 			void *buffer = *(char **)(f->esp + 8);
 			int size = *(int *)(f->esp + 12);
-			if (fd == 0)
+			if (fd == 1)
 			{
 				putbuf ((char *)buffer, (size_t)size);
 				f->eax = -1;
@@ -149,7 +153,6 @@ syscall_handler (struct intr_frame *f)
 				else
 					f->eax = file_write(get_file_list (fd)->file, buffer, size);
 			}
-			//not implemented
 			break;
 		}
 		case SYS_SEEK:
@@ -168,7 +171,6 @@ syscall_handler (struct intr_frame *f)
 				list_remove (&thread_file->elem);	
 				free (thread_file);
 			}
-			//not implemented
 			break; 
 		}
 	}			

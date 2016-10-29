@@ -99,7 +99,7 @@ start_process (void *file_name_)
 int
 process_wait (tid_t child_tid UNUSED) 
 {
-  //while(1);
+  while(1);
   return -1;
 }
 
@@ -109,6 +109,11 @@ process_exit (void)
 {
   struct thread *cur = thread_current ();
   uint32_t *pd;
+
+  /* Close & allow write to executable file */
+  file_close(thread_current()->executable_self);
+  //TODO :: We should close all files that process opened
+  //TODO :: We should care all children
 
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
@@ -331,10 +336,15 @@ printf ("file_name_real: %s\n",file_name_real);
   *eip = (void (*) (void)) ehdr.e_entry;
 
   success = true;
+  
+  /* Deny writing to executable file */
+  thread_current()->executable_self = file;
+  file_deny_write(thread_current()->executable_self);
 
  done:
   /* We arrive here whether the load is successful or not. */
-  file_close (file);
+  if(!success)
+  	file_close (file);
   return success;
 }
 
@@ -464,7 +474,6 @@ parse_line(const char *cmdline, void **esp)
   //Count how many words consist line
   for(token = strtok_r(copiedLine," ",&save_ptr); token !=NULL; token = strtok_r(NULL," ",&save_ptr))
 	count= count+1;  
- 
   int *argument_address = calloc(count, sizeof(int));
 
   //Save argument data in stack 
