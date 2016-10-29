@@ -186,9 +186,10 @@ thread_create (const char *name, int priority,
   struct thread_child *thread_child = malloc(sizeof(thread_child));
   thread_child->is_done = false;
   thread_child->is_wait = false;
-  int status = 0;
-  int pid = tid;
+  thread_child->status = -13;
+  thread_child->pid = tid;
   list_push_back (&thread_current()->child_list, &thread_child->elem);
+
   /* Prepare thread for first run by initializing its stack.
      Do this atomically so intermediate values for the 'stack' 
      member cannot be observed. */
@@ -474,13 +475,15 @@ init_thread (struct thread *t, const char *name, int priority)
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
   t->magic = THREAD_MAGIC;
-  list_push_back (&all_list, &t->allelem); 
+  list_push_back (&all_list, &t->allelem);
+ 
   list_init (&t->file_list);
   t->fd_count = 3;//initialize. 0 is STDIN, 1 is STDOUT, 2 is ERROR
   list_init (&t->child_list);
   sema_init (&t->child_sema, 0);  
   t->executable_self = NULL;
   t->exit_status = -13;//penguin
+
   t->parent = running_thread ();
 }
 
