@@ -183,7 +183,7 @@ thread_create (const char *name, int priority,
   /* Initialize thread. */
   init_thread (t, name, priority);
   tid = t->tid = allocate_tid ();
-  struct thread_child *thread_child = malloc(sizeof(thread_child));
+  struct thread_child *thread_child = malloc(sizeof(*thread_child));
   thread_child->is_done = false;
   thread_child->is_wait = false;
   thread_child->status = -13;

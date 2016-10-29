@@ -86,11 +86,9 @@ syscall_handler (struct intr_frame *f)
 		}
 		case SYS_WAIT:
 		{
-			while(1);
-			return -1;
-		//	int pid;
-		//	pid = *(int *)(f->esp + 4);
-		//	process_wait(pid);
+			int pid;
+			pid = *(int *)(f->esp + 4);
+			process_wait(pid);
 			//not implemented
 			break;
 		}

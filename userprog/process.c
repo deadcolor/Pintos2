@@ -148,7 +148,7 @@ process_exit (void)
 		break;
 	}
   }
-
+  printf("%s: exit(%d)\n",cur->name,cur->exit_status);
   /* Close & allow write to executable file */
   file_close(cur->executable_self);
   //TODO :: We should close all files that process opened
@@ -283,7 +283,6 @@ load (const char *file_name, void (**eip) (void), void **esp)
   strlcpy (file_name_real, file_name, strlen(file_name)+1);
   file_name_real = strtok_r(file_name_real," ",&save_ptr);
 
-printf ("file_name_real: %s\n",file_name_real);
   /* Open executable file. */
   file = filesys_open (file_name_real);
 
