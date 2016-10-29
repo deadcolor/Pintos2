@@ -71,9 +71,12 @@ syscall_handler (struct intr_frame *f)
 			shutdown_power_off();
 			break;
 		case SYS_EXIT:
+		{
+			int status = *(int *)(f->esp + 4);
+			thread_current ()->exit_status = status;
 			thread_exit();
-			//not implemented
 			break;
+		}
 		case SYS_EXEC:
 		{
 			char *str = *(char **)(f->esp + 4);
@@ -82,8 +85,13 @@ syscall_handler (struct intr_frame *f)
 			break;
 		}
 		case SYS_WAIT:
+		{
+			int pid;
+			pid = *(int *)(f->esp + 4);
+			process_wait(pid);
 			//not implemented
 			break;
+		}
 		case SYS_CREATE:
 		{
 			char *str = *(char **)(f->esp + 4);//file name
@@ -156,11 +164,18 @@ syscall_handler (struct intr_frame *f)
 			break;
 		}
 		case SYS_SEEK:
-			//not implemented
+		{
+			int fd = *(int *)( f->esp + 4);
+			unsigned position = *(unsigned *)(f->esp + 8);
+			file_seek(get_file_list(fd)->file, position);
 			break;
+		}	
 		case SYS_TELL:
-			//not implemented
+		{
+			int fd = *(int *)( f->esp + 4);
+			f->eax = file_tell(get_file_list(fd)->file);
 			break;
+		}
 		case SYS_CLOSE:
 		{
 			int fd = *(int *)( f->esp + 4);

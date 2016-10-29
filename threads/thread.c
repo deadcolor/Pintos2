@@ -147,15 +147,6 @@ thread_print_stats (void)
           idle_ticks, kernel_ticks, user_ticks);
 }
 
-struct thread_child
-{
-	bool is_done;
-	struct thread *child;
-	bool is_wait;
-	int status;
-	int pid;
-};
-
 /* Creates a new kernel thread named NAME with the given initial
    PRIORITY, which executes FUNCTION passing AUX as the argument,
    and adds it to the ready queue.  Returns the thread identifier
@@ -192,7 +183,12 @@ thread_create (const char *name, int priority,
   /* Initialize thread. */
   init_thread (t, name, priority);
   tid = t->tid = allocate_tid ();
-
+  struct thread_child *thread_child = malloc(sizeof(thread_child));
+  thread_child->is_done = false;
+  thread_child->is_wait = false;
+  int status = 0;
+  int pid = tid;
+  list_push_back (&thread_current()->child_list, &thread_child->elem);
   /* Prepare thread for first run by initializing its stack.
      Do this atomically so intermediate values for the 'stack' 
      member cannot be observed. */
@@ -484,6 +480,8 @@ init_thread (struct thread *t, const char *name, int priority)
   list_init (&t->child_list);
   sema_init (&t->child_sema, 0);  
   t->executable_self = NULL;
+  t->exit_status = -13;//penguin
+  t->parent = running_thread ();
 }
 
 /* Allocates a SIZE-byte frame at the top of thread T's stack and

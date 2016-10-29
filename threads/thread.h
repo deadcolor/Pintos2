@@ -101,6 +101,7 @@ struct thread
     struct thread *parent;		/* parent thread */
     struct semaphore child_sema;	/* semaphore for waiting child's death */
     struct file *executable_self;	/* executable file */
+    int exit_status;			/* exit status */
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
@@ -109,6 +110,15 @@ struct thread
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
   };
+
+struct thread_child
+{
+	bool is_done;
+	bool is_wait;
+	int status;
+	int pid;
+	struct list_elem elem;
+};
 
 /* If false (default), use round-robin scheduler.
    If true, use multi-level feedback queue scheduler.

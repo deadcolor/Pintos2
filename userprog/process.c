@@ -17,6 +17,7 @@
 #include "threads/palloc.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+#include "threads/synch.h"
 
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
@@ -99,8 +100,30 @@ start_process (void *file_name_)
 int
 process_wait (tid_t child_tid UNUSED) 
 {
-  while(1);
-  return -1;
+  struct list_elem *e;
+  struct thread_child *c;
+  int result;
+  c = NULL;
+  for (e = list_begin (&thread_current ()->child_list); e != list_end (&thread_current ()->child_list); e = list_next (e))
+  {
+  	c = list_entry (e, struct thread_child, elem);
+	if (c->pid == child_tid)
+	{
+		c->is_wait = true;
+		break;
+	}
+  }
+  if(!c)
+	return -1;
+  if (!c->is_done)
+  {
+	sema_down (&thread_current ()->child_sema);
+  }
+  
+  result = c->status;
+  list_remove (&c->elem);
+  free(c);
+  return result;
 }
 
 /* Free the current process's resources. */
@@ -109,9 +132,26 @@ process_exit (void)
 {
   struct thread *cur = thread_current ();
   uint32_t *pd;
+  
+  struct list_elem *e;
+  struct thread_child *c;
+  
+  c = NULL;
+  for (e = list_begin (&cur->parent->child_list); e != list_end (&cur->parent->child_list); e = list_next(e))
+  {
+	c = list_entry (e, struct thread_child, elem);
+	if (c->pid == cur->tid)
+	{
+		c->status = cur->exit_status;
+		c->is_done = true;
+		if(c->is_wait == true)
+			sema_up(&cur->parent->child_sema);
+		break;
+	}
+  }
 
   /* Close & allow write to executable file */
-  file_close(thread_current()->executable_self);
+  file_close(cur->executable_self);
   //TODO :: We should close all files that process opened
   //TODO :: We should care all children
 
