@@ -41,6 +41,9 @@ is_string(const char *string)
   //If string is null
   if(string == NULL)
 	return 0;
+  if(!is_valid_address(string))
+	return 0;
+
   //Check if bad_ptr input
   uint32_t *ptr = pagedir_get_page(thread_current()->pagedir, string);
   if(!ptr)
@@ -110,14 +113,18 @@ syscall_handler (struct intr_frame *f)
 			// Check whether file exist or not
 			char *save_ptr;
 			str_cpy = strtok_r(str_cpy," ",&save_ptr);
+			file_lock_acquire ();
 			struct file *tryFile = filesys_open(str_cpy);
+			file_lock_release ();
 
 			if(!tryFile)
 				f->eax = -1;
 			else
 				f->eax = process_execute (str);
 			
+			file_lock_acquire ();
 			file_close(tryFile);
+			file_lock_release ();
 			free(str_cpy);
 			break;
 		}
