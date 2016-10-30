@@ -23,7 +23,7 @@ static bool
 is_valid_address(void *address)
 {
   //TODO : not completed
-  if(!is_user_vaddr(address))
+  if(!is_user_vaddr(address) || address < (void*)0x08048000)
   {
 	//Call SYSCALL_EXIT
 	return 0;
@@ -61,9 +61,11 @@ struct thread_file *get_file_list(int fd)
 static void
 syscall_handler (struct intr_frame *f) 
 {
+	if(!is_valid_address((void *) f->esp))
+		thread_exit();
+
 	int call_number = *(int *)f->esp;
 
-	is_valid_address((void *) f->esp);
 	
 	switch(call_number)
 	{
