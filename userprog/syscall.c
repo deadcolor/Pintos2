@@ -113,7 +113,7 @@ syscall_handler (struct intr_frame *f)
 				f->eax = -1;
 			else
 			{
-				struct thread_file *thread_file = malloc(sizeof(thread_file));
+				struct thread_file *thread_file = malloc(sizeof(struct thread_file));
 				thread_file->fd = thread_current()->fd_count++;
 				thread_file->file = file;
 				list_push_back (&thread_current()->file_list, &thread_file->elem);
