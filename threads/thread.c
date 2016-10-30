@@ -482,7 +482,7 @@ init_thread (struct thread *t, const char *name, int priority)
   list_init (&t->child_list);
   sema_init (&t->child_sema, 0);  
   t->executable_self = NULL;
-  t->exit_status = -1;
+  t->exit_status = -13;//penguin
 
   t->parent = running_thread ();
 }

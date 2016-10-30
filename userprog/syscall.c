@@ -25,27 +25,18 @@ is_valid_address(void *address)
   //TODO : not completed
   if(!is_user_vaddr(address) || address < (void*)0x08048000)
   {
-	//Call SYSCALL_EXIT
 	return 0;
   }
 	return 1;		
 }
-
-struct thread_file
-{
-	int fd;
-	struct file *file;
-	struct list_elem elem;
-};
 
 struct thread_file *get_file_list(int fd)
 {
 	struct list_elem *e;
 	struct thread_file *F;
 	struct thread_file *f;
-	struct list *list = &thread_current()->file_list;
 	F = NULL;
-	for( e = list_begin (list); e != list_end (list); e = list_next (e))
+	for( e = list_begin (&thread_current ()->file_list); e != list_end (&thread_current ()->file_list); e = list_next (e))
 	{
 		f = list_entry (e, struct thread_file, elem);
 		if (f->fd == fd)
@@ -62,7 +53,10 @@ static void
 syscall_handler (struct intr_frame *f) 
 {
 	if(!is_valid_address((void *) f->esp))
+	{
+		thread_current ()->exit_status = -1;
 		thread_exit();
+	}
 
 	int call_number = *(int *)f->esp;
 
@@ -90,7 +84,7 @@ syscall_handler (struct intr_frame *f)
 		{
 			int pid;
 			pid = *(int *)(f->esp + 4);
-			process_wait(pid);
+			f->eax = process_wait(pid);
 			//not implemented
 			break;
 		}
@@ -98,7 +92,9 @@ syscall_handler (struct intr_frame *f)
 		{
 			char *str = *(char **)(f->esp + 4);//file name
 			int size = *(int *)(f->esp + 8);//size
+		//	acquire_filesys_lock ();
 			f->eax = filesys_create (str, size);
+		//	release_filesys_lock ();
 			break;
 		}
 		case SYS_REMOVE:

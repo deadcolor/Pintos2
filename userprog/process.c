@@ -74,8 +74,11 @@ start_process (void *file_name_)
 
   /* If load failed, quit. */
   palloc_free_page (file_name);
-  if (!success) 
+  if (!success)
+  {
+    thread_current ()->exit_status = -1; 
     thread_exit ();
+  }
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
@@ -111,8 +114,10 @@ process_wait (tid_t child_tid UNUSED)
 		c->is_wait = true;
 		break;
 	}
+	else 
+	c = NULL;
   }
-  if(!c)
+  if(c == NULL)
 	return -1;
   if (!c->is_done)
   {
@@ -152,6 +157,25 @@ process_exit (void)
   /* Close & allow write to executable file */
   file_close(cur->executable_self);
   //TODO :: We should close all files that process opened
+  struct thread_file *f;
+  
+  for (e = list_begin (&cur->file_list); e != list_end (&cur->file_list); )
+  {
+	f = list_entry (e, struct thread_file, elem);
+	e = list_next (e);
+	file_close (f->file);
+	list_remove (&f->elem);
+	free (f);
+  }
+
+  for (e = list_begin (&cur->child_list); e != list_end (&cur->child_list);)
+  {
+	c = list_entry (e, struct thread_child, elem);
+	e = list_next (e);
+	list_remove (&c->elem);
+	free(c);
+  }
+
   //TODO :: We should care all children
 
   /* Destroy the current process's page directory and switch back
@@ -271,6 +295,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
   bool success = false;
   int i;
 
+//  acquire_filesys_lock ();
   /* Allocate and activate page directory. */
   t->pagedir = pagedir_create ();
   if (t->pagedir == NULL) 
@@ -380,6 +405,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
   file_deny_write(thread_current()->executable_self);
 
  done:
+//  release_filesys_lock ();
   /* We arrive here whether the load is successful or not. */
   if(!success)
   	file_close (file);
