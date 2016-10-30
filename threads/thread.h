@@ -128,6 +128,9 @@ struct thread_file
 	struct list_elem elem;
 };
 
+void file_lock_acquire (void);
+void file_lock_release (void);
+
 /* If false (default), use round-robin scheduler.
    If true, use multi-level feedback queue scheduler.
    Controlled by kernel command-line option "-o mlfqs". */

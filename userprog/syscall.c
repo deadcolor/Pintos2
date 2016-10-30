@@ -22,12 +22,31 @@ syscall_init (void)
 static bool
 is_valid_address(void *address)
 {
-  //TODO : not completed
   if(!is_user_vaddr(address) || address < (void*)0x08048000)
-  {
 	return 0;
-  }
+
+  //Check if bad_ptr input
+  uint32_t *ptr = pagedir_get_page(thread_current()->pagedir, address);
+  if(!ptr)
+	return 0;
+
+  else
 	return 1;		
+}
+
+/* check valid string */
+static bool
+is_string(const char *string)
+{
+  //If string is null
+  if(string == NULL)
+	return 0;
+  //Check if bad_ptr input
+  uint32_t *ptr = pagedir_get_page(thread_current()->pagedir, string);
+  if(!ptr)
+	return 0;
+	
+	return 1;
 }
 
 struct thread_file *get_file_list(int fd)
@@ -68,16 +87,38 @@ syscall_handler (struct intr_frame *f)
 			break;
 		case SYS_EXIT:
 		{
-			int status = *(int *)(f->esp + 4);
-			thread_current ()->exit_status = status;
+		        if(!is_valid_address((void *)f->esp +4))
+				thread_current ()->exit_status = -1;
+			else {		
+				int status = *(int *)(f->esp + 4);
+				thread_current ()->exit_status = status;
+			}
 			thread_exit();
 			break;
 		}
 		case SYS_EXEC:
 		{
-			char *str = *(char **)(f->esp + 4);
-			f->eax = process_execute (str);
-			//not implemented
+			const char *str = *(char **)(f->esp + 4);
+			if(!is_valid_address(str))
+			{
+   				thread_current ()->exit_status = -1;
+                                thread_exit();
+			}
+			char *str_cpy = malloc(strlen(str)+1);
+			strlcpy(str_cpy, str, strlen(str)+1);
+			
+			// Check whether file exist or not
+			char *save_ptr;
+			str_cpy = strtok_r(str_cpy," ",&save_ptr);
+			struct file *tryFile = filesys_open(str_cpy);
+
+			if(!tryFile)
+				f->eax = -1;
+			else
+				f->eax = process_execute (str);
+			
+			file_close(tryFile);
+			free(str_cpy);
 			break;
 		}
 		case SYS_WAIT:
@@ -85,28 +126,40 @@ syscall_handler (struct intr_frame *f)
 			int pid;
 			pid = *(int *)(f->esp + 4);
 			f->eax = process_wait(pid);
-			//not implemented
 			break;
 		}
 		case SYS_CREATE:
 		{
+		        if(!is_valid_address((void *)f->esp +4) || !is_valid_address((void *)f->esp +8)|| !is_string(*(char **)(f->esp +4))){
+				thread_current ()->exit_status = -1;
+				thread_exit();
+			}
 			char *str = *(char **)(f->esp + 4);//file name
 			int size = *(int *)(f->esp + 8);//size
-		//	acquire_filesys_lock ();
+			file_lock_acquire ();
 			f->eax = filesys_create (str, size);
-		//	release_filesys_lock ();
+			file_lock_release ();
 			break;
 		}
 		case SYS_REMOVE:
 		{
 			char *str = *(char **)(f->esp + 4);//file name
+			file_lock_acquire ();
 			filesys_remove (str);
+			file_lock_release ();
 			break;
 		}
 		case SYS_OPEN:
 		{
+			if(!is_valid_address((void *)f->esp +4) || !is_string(*(char **)(f->esp +4))){
+                                thread_current ()->exit_status = -1;
+                                thread_exit();
+                        }
+			
 			char *str = *(char **)(f->esp + 4);//file name
+			file_lock_acquire ();
 			struct file *file = filesys_open (str);
+			file_lock_release ();
 			if(file == NULL)
 				f->eax = -1;
 			else
@@ -117,6 +170,7 @@ syscall_handler (struct intr_frame *f)
 				list_push_back (&thread_current()->file_list, &thread_file->elem);
 				f->eax = thread_file->fd;
 			}
+			
 			break;
 		}
 		case SYS_FILESIZE:
@@ -125,21 +179,31 @@ syscall_handler (struct intr_frame *f)
 			if (get_file_list (fd) == NULL)
 				f->eax = -1;
 			else
-			{
+			{	
+				file_lock_acquire ();
 				f->eax = file_length(get_file_list (fd)->file);
+				file_lock_release ();
 			}
 			break;
 		}
 		case SYS_READ:
 		{
-			//TODO:: check valid pointer fd, buffer, size
 			int fd = *(int *)(f->esp + 4);
 			void *buffer = *(char **)(f->esp + 8);
 			int size = *(int *)(f->esp + 12);
+			
+			if(!is_valid_address(buffer)){
+				thread_current()->exit_status = -1;
+				thread_exit();
+			}
 			if (get_file_list (fd) == NULL)
 				f->eax = -1;
 			else
+			{
+				file_lock_acquire ();
 				f->eax = file_read (get_file_list (fd)->file, buffer, size);
+				file_lock_release ();
+			}
 			break;
 		}
 		case SYS_WRITE:
@@ -147,6 +211,11 @@ syscall_handler (struct intr_frame *f)
 			int fd = *(int *)(f->esp + 4);
 			void *buffer = *(char **)(f->esp + 8);
 			int size = *(int *)(f->esp + 12);
+			
+			if(!is_valid_address(buffer)){
+                                thread_current()->exit_status = -1;
+                                thread_exit();
+                        }
 			if (fd == 1)
 			{
 				putbuf ((char *)buffer, (size_t)size);
@@ -157,7 +226,11 @@ syscall_handler (struct intr_frame *f)
 				if (get_file_list (fd) == NULL)
 					f->eax = -1;
 				else
+				{
+					file_lock_acquire ();
 					f->eax = file_write(get_file_list (fd)->file, buffer, size);
+					file_lock_release ();
+				}
 			}
 			break;
 		}
@@ -165,22 +238,28 @@ syscall_handler (struct intr_frame *f)
 		{
 			int fd = *(int *)( f->esp + 4);
 			unsigned position = *(unsigned *)(f->esp + 8);
+			file_lock_acquire ();
 			file_seek(get_file_list(fd)->file, position);
+			file_lock_release ();
 			break;
 		}	
 		case SYS_TELL:
 		{
 			int fd = *(int *)( f->esp + 4);
+			file_lock_acquire ();
 			f->eax = file_tell(get_file_list(fd)->file);
+			file_lock_release ();
 			break;
 		}
 		case SYS_CLOSE:
 		{
 			int fd = *(int *)( f->esp + 4);
 			struct thread_file *thread_file = get_file_list (fd);
-			if( thread_file != NULL)
+			if (thread_file != NULL)
 			{
+				file_lock_acquire ();
 				file_close (thread_file->file);
+				file_lock_release ();
 				list_remove (&thread_file->elem);	
 				free (thread_file);
 			}

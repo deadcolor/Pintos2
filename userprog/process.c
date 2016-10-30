@@ -155,7 +155,9 @@ process_exit (void)
   }
   printf("%s: exit(%d)\n",cur->name,cur->exit_status);
   /* Close & allow write to executable file */
+  file_lock_acquire ();
   file_close(cur->executable_self);
+  file_lock_release ();
   //TODO :: We should close all files that process opened
   struct thread_file *f;
   
@@ -163,7 +165,9 @@ process_exit (void)
   {
 	f = list_entry (e, struct thread_file, elem);
 	e = list_next (e);
+	file_lock_acquire ();
 	file_close (f->file);
+	file_lock_release ();
 	list_remove (&f->elem);
 	free (f);
   }
@@ -295,7 +299,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
   bool success = false;
   int i;
 
-//  acquire_filesys_lock ();
+  file_lock_acquire ();
   /* Allocate and activate page directory. */
   t->pagedir = pagedir_create ();
   if (t->pagedir == NULL) 
@@ -405,10 +409,10 @@ load (const char *file_name, void (**eip) (void), void **esp)
   file_deny_write(thread_current()->executable_self);
 
  done:
-//  release_filesys_lock ();
   /* We arrive here whether the load is successful or not. */
   if(!success)
   	file_close (file);
+  file_lock_release ();
   return success;
 }
 
