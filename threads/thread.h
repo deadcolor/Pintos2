@@ -97,12 +97,14 @@ struct thread
 
     /* Project 2 */
     struct list file_list;		/* file that was opened in thread */
+    struct lock fd_lock;
     int fd_count;			/* Increase file descriptor as new file opened  */
     struct list child_list;		/* thread that was child of thread */
     struct thread *parent;		/* parent thread */
     struct semaphore child_sema;	/* semaphore for waiting child's death */
     struct file *executable_self;	/* executable file */
     int exit_status;			/* exit status */
+    bool success;
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */

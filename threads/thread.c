@@ -492,6 +492,7 @@ init_thread (struct thread *t, const char *name, int priority)
   list_push_back (&all_list, &t->allelem);
  
   list_init (&t->file_list);
+  lock_init (&t->fd_lock);
   t->fd_count = 3;//initialize. 0 is STDIN, 1 is STDOUT, 2 is ERROR
   list_init (&t->child_list);
   sema_init (&t->child_sema, 0);  

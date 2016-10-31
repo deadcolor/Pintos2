@@ -8,6 +8,7 @@
 #include "filesys/file.h"
 #include "list.h"
 #include "threads/vaddr.h"
+#include "threads/synch.h"
 
 static void syscall_handler (struct intr_frame *);
 
@@ -172,7 +173,9 @@ syscall_handler (struct intr_frame *f)
 			else
 			{
 				struct thread_file *thread_file = malloc(sizeof(struct thread_file));
-				thread_file->fd = thread_current()->fd_count++;
+				lock_acquire (&thread_current ()->fd_lock);
+				thread_file->fd = thread_current ()->fd_count++;
+				lock_release (&thread_current ()->fd_lock);
 				thread_file->file = file;
 				list_push_back (&thread_current()->file_list, &thread_file->elem);
 				f->eax = thread_file->fd;

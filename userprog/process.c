@@ -54,6 +54,11 @@ process_execute (const char *file_name)
 
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy); 
+
+  sema_down(&thread_current ()->child_sema);
+  if(!thread_current ()->success)
+	return -1;
+
   return tid;
 }
 
@@ -76,8 +81,15 @@ start_process (void *file_name_)
   palloc_free_page (file_name);
   if (!success)
   {
+    thread_current ()->parent->success = false;
+    sema_up (&thread_current ()->parent->child_sema);
     thread_current ()->exit_status = -1; 
     thread_exit ();
+  }
+  else
+  {
+    thread_current ()->parent->success = true;
+    sema_up (&thread_current ()->parent->child_sema);
   }
 
   /* Start the user process by simulating a return from an
