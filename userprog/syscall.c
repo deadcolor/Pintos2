@@ -23,7 +23,7 @@ syscall_init (void)
 static bool
 is_valid_address(void *address)
 {
-  if(!is_user_vaddr(address) || address < (void*)0x08048000)
+  if(!is_user_vaddr(address))
 	return 0;
 
   //Check if bad_ptr input
