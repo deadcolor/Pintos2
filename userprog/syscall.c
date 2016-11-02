@@ -108,25 +108,7 @@ syscall_handler (struct intr_frame *f)
    				thread_current ()->exit_status = -1;
                                 thread_exit();
 			}
-			char *str_cpy = malloc(strlen(str)+1);
-			strlcpy(str_cpy, str, strlen(str)+1);
-			
-			// Check whether file exist or not
-			char *save_ptr;
-			str_cpy = strtok_r(str_cpy," ",&save_ptr);
-			file_lock_acquire ();
-			struct file *tryFile = filesys_open(str_cpy);
-			file_lock_release ();
-
-			if(!tryFile)
-				f->eax = -1;
-			else
 				f->eax = process_execute (str);
-			
-			file_lock_acquire ();
-			file_close(tryFile);
-			file_lock_release ();
-			free(str_cpy);
 			break;
 		}
 		case SYS_WAIT:
