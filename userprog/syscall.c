@@ -53,7 +53,7 @@ is_string(const char *string)
 	return 1;
 }
 
-struct thread_file *get_file_list(int fd)
+struct thread_file *get_file_list (int fd)
 {
 	struct list_elem *e;
 	struct thread_file *F;

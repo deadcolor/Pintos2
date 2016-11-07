@@ -104,7 +104,7 @@ struct thread
     struct semaphore child_sema;	/* semaphore for waiting child's death */
     struct file *executable_self;	/* executable file */
     int exit_status;			/* exit status */
-    bool success;
+    bool load_done;			/* check load */
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
@@ -129,9 +129,6 @@ struct thread_file
 	struct file *file;
 	struct list_elem elem;
 };
-
-void file_lock_acquire (void);
-void file_lock_release (void);
 
 /* If false (default), use round-robin scheduler.
    If true, use multi-level feedback queue scheduler.

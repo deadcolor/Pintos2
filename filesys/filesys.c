@@ -23,6 +23,7 @@ filesys_init (bool format)
 
   inode_init ();
   free_map_init ();
+  file_lock_init (); //initialize file lock  
 
   if (format) 
     do_format ();

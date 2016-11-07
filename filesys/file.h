@@ -5,6 +5,11 @@
 
 struct inode;
 
+/* File lock */
+void file_lock_init (void);
+void file_lock_acquire (void);
+void file_lock_release (void);
+
 /* Opening and closing files. */
 struct file *file_open (struct inode *);
 struct file *file_reopen (struct file *);
