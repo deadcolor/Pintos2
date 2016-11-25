@@ -267,14 +267,66 @@ syscall_handler (struct intr_frame *f)
 		{
 			int fd = *(int *) (f->esp +4);
 			void *addr = *(void **)(f->esp +8);
-
+			int size;
 			//Check whether file descriptor is invalid
 			if(fd == 0 || fd == 1 || fd < 0)
+			{
 				f->eax = -1;
+				break;
+			}
 			//Check addr is not null & page-aligned
 			if( addr == NULL || pg_round_down(addr) != addr  || addr == 0x0)
-				f->eax = -1;	
-	
+			{
+				f->eax = -1;
+				break;	
+			}
+			struct thread_file *thread_file = get_file_list(fd);
+			//Check file is in thread
+			if(thread_file == NULL)
+			{
+				f->eax = -1;
+				break;
+			}
+			file_lock_acquire();
+			size = file_length(thread_file->file);
+			struct file *file = file_reopen(thread_file->file);	
+			file_lock_release();
+			//Check filesize is under 0
+			if(size <=0 )
+			{
+				f->eax = -1;
+				break;
+			}
+			void *paddr = addr;
+			//Devide File into Page
+			while(size >0)	
+			{
+				void *upage = pg_round_down(paddr);
+				int read_bytes;
+				int zero_bytes;
+				//More than 1 page
+				if( size > PGSIZE )
+				{
+					read_bytes = PGSIZE;
+					zero_bytes = 0;
+				}
+				else
+				{
+					read_bytes = size;
+					zero_bytes = PGSIZE - size;
+				}
+				//If that address is already mapped
+				if(pagedir_get_page(thread_current()->pagedir,paddr) != NULL || get_sp(upage,thread_current()))
+				{	
+					f->eax = -1;
+					break;
+				}
+				else
+				{
+					
+				}
+			}
+
 			break;
 		}
 		case SYS_MUNMAP:
