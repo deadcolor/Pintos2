@@ -89,6 +89,8 @@ bool load_sp (void *upage)
 		delete_frame (kpage);
 		return false;
 	}
+	delete_frame (kpage);
+	return false;
 }
 
 bool evict_sp (void *upage, struct thread *thread)

@@ -9,6 +9,7 @@
 #include "list.h"
 #include "threads/vaddr.h"
 #include "threads/synch.h"
+#include "vm/page.h"
 
 static void syscall_handler (struct intr_frame *);
 
@@ -28,9 +29,13 @@ is_valid_address(void *address)
 
   //Check if bad_ptr input
   uint32_t *ptr = pagedir_get_page(thread_current()->pagedir, address);
-  if(!ptr)
-	return 0;
+  if(ptr)
+	return 1;
 
+  void *upage = pg_round_down (address);
+  struct supplement_page *sp = get_sp (upage, thread_current ());
+  if(sp == NULL)
+	return 0;
   else
 	return 1;		
 }
@@ -186,6 +191,7 @@ syscall_handler (struct intr_frame *f)
 			
 			if(!is_valid_address(buffer)){
 				thread_current()->exit_status = -1;
+		//		printf ("read-boundary\n");
 				thread_exit();
 			}
 			if (get_file_list (fd) == NULL)
