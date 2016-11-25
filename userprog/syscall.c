@@ -257,5 +257,24 @@ syscall_handler (struct intr_frame *f)
 			}
 			break; 
 		}
+		case SYS_MMAP:
+		{
+			int fd = *(int *) (f->esp +4);
+			void *addr = *(void **)(f->esp +8);
+
+			//Check whether file descriptor is invalid
+			if(fd == 0 || fd == 1 || fd < 0)
+				f->eax = -1;
+			//Check addr is not null & page-aligned
+			if( addr == NULL || pg_round_down(addr) != addr  || addr == 0x0)
+				f->eax = -1;	
+	
+			break;
+		}
+		case SYS_MUNMAP:
+		{
+			
+			break;
+		}
 	}			
 }
