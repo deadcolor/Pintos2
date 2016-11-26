@@ -190,9 +190,13 @@ process_exit (void)
 	list_remove (&c->elem);
 	free(c);
   }
-
-  //TODO :: We should care all children
-
+   while(!list_empty(&thread_current()->mmap_list))
+  {
+	struct list_elem *e = list_front(&thread_current()->mmap_list);
+	struct mmap_file *file = list_entry(e,struct mmap_file,elem);
+	unmap_file(file->mapid); 
+  }
+	
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
   pd = cur->pagedir;

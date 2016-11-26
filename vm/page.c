@@ -1,6 +1,7 @@
 #include "vm/page.h"
 #include "vm/swap.h"
 #include <list.h>
+#include <stdio.h>
 #include "filesys/file.h"
 #include "userprog/process.h"
 #include "threads/thread.h"
@@ -53,15 +54,23 @@ bool create_sp (void *upage, struct file *file, off_t ofs, uint32_t read_bytes, 
 
 bool load_sp (void *upage)
 {
+	int j = 0;
+//	printf ("load start %d\n",j++);
 	struct supplement_page *sp = get_sp (upage, thread_current ());
+//	printf ("load %d\n", j++);
 	if (sp == NULL)
 	{
 //		printf ("dye here?\n");
 		return false;
 	}
+//	printf ("load %d\n", j++);
 	void *kpage = make_frame_upage (upage);
+//	printf ("load %d\n", j++);
 	if(kpage == NULL)
+	{
+//	printf ("load dye?%d\n", j++);
 		return false;
+	}
 //	sp->kpage = kpage;
 	if (sp->type == 1 || sp->type == 2)
 	{
@@ -69,11 +78,13 @@ bool load_sp (void *upage)
 		if (file_read (sp->file, kpage, sp->read_bytes) != (int) sp->read_bytes)
 		{
 			delete_frame (kpage);
+//	printf ("load dye here %d\n", j++);
 			return false;
 		}
 		memset (kpage + sp->read_bytes, 0, sp->read_bytes);
 		if (!install_page (sp->upage, kpage, sp->writable))
 		{
+//	printf ("load no dye%d\n", j++);
 			delete_frame (kpage);
 			return false;
 		}
@@ -81,8 +92,10 @@ bool load_sp (void *upage)
 	}
 	else if (sp->type == 3)
 	{
+//	printf ("load type3 %d\n", j++);
 		if (!install_page (sp->upage, kpage, sp->writable))
 		{
+//	printf ("load type3 dye %d\n", j++);
 			delete_frame (kpage);
 			return false;
 		}
@@ -90,28 +103,39 @@ bool load_sp (void *upage)
 	}
 	else if (sp->type == 4)
 	{
-		if (swap_read(sp->sector_num, kpage))
+//	printf ("load type4 %d\n", j++);
+	/*	if (swap_read(sp->sector_num, kpage))
 		{
 			if(!install_page (sp->upage, kpage, sp->writable))
 			{
+//			printf ("load type4 dye %d\n", j++);
 				delete_frame (kpage);
 				return false;
 			}
 			return true;
+		}*/
+		if(install_page (sp->upage, kpage, sp->writable))
+		{
+			if (swap_read(sp->sector_num, upage))
+				return true;
 		}
+//	printf ("load type4 dye2 %d\n", j++);
 		delete_frame (kpage);
 		return false;
 	}
+//	printf ("load just dye %d\n", j++);
 	delete_frame (kpage);
 	return false;
 }
 
 bool evict_sp (void *upage, struct thread *thread)
 {
+//	printf ("evict_sp start\n");
 	struct supplement_page *sp = get_sp (upage, thread);
 	void *kpage = pagedir_get_page (thread->pagedir, upage);
 	if (sp->type == 2)
 	{
+//		printf ("evict type 2\n");
 		if (pagedir_is_dirty (thread->pagedir, upage))
 		{
 			pagedir_set_dirty (thread->pagedir, upage, false);
@@ -121,11 +145,12 @@ bool evict_sp (void *upage, struct thread *thread)
 	}
 	else if (sp->type == 3 || sp->type == 4)
 	{
+//		printf ("evict type 3, 4 \n");
 		sp->type = 4;
 		sp->sector_num = get_swap_num ();
 		if (sp->sector_num == BITMAP_ERROR)
 			return false;
-		if(!swap_write(sp->sector_num, kpage))
+		if(!swap_write(sp->sector_num, upage))
 			return false;
 	}
 	pagedir_clear_page (thread->pagedir, upage);
@@ -145,6 +170,68 @@ bool stack_growth (void *upage)
 
 bool close_all ()
 {
+	
+}
+
+
+void close_file(void *upage)
+{
+	struct supplement_page *sp = get_sp(upage,thread_current());	
+	ASSERT(sp!= NULL)
+    
+	//Check if that file is already written
+	bool dirted = 0;
+	if(sp->writable == true && pagedir_is_dirty(thread_current()->pagedir,sp->upage))
+		dirted = 1;
+	
+	void *kpage = get_frame_upage(upage,thread_current());
+	if(kpage == NULL)
+	{
+		bool success = load_sp(upage);
+		if(success)
+			kpage = get_frame_upage(upage,thread_current());
+		else
+			ASSERT(0);
+	}
+
+	if(dirted)
+	{
+		file_seek(sp->file,sp->ofs);
+		file_write(sp->file, kpage, sp->read_bytes);	
+	};
+	delete_frame(kpage);
+
+	pagedir_clear_page(thread_current()->pagedir, sp->upage);
+	//TODO:: frame_clear? close file?
+	list_remove(&sp->elem); 
+	free(sp);
 
 }
 
+/* Unmap mmap_file.return 1 if success,  return 0 if fail*/
+bool unmap_file(int mapid)
+{
+	//Find mmap_files in thread_current
+	struct thread *t = thread_current();
+	struct list_elem *e = NULL;
+	for(e = list_begin (&t->mmap_list); e!= list_end(&t->mmap_list);)
+	{
+		struct mmap_file *file = list_entry(e, struct mmap_file, elem);
+		
+		e = list_next(e);
+		if(file->mapid == mapid)
+		{
+			list_remove(&file->elem);
+			close_file(file->upage);
+			free(file);		
+		}
+		else
+		{
+		}
+	}
+	//If fail to find mmap_file, ERROR
+	if(e == NULL)
+		return 0;
+	else
+		return 1;
+}

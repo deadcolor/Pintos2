@@ -153,27 +153,35 @@ page_fault (struct intr_frame *f)
   user = (f->error_code & PF_U) != 0;
 
 //  printf ("pagefault!\n");
-  
+  int j = 0;
+//  printf("pagefault %d\n",j++);
   if (not_present && is_user_vaddr (fault_addr) && fault_addr > (void *)0x08048000)
   {
+//  printf("pagefault %d\n",j++);
 	void *upage = pg_round_down (fault_addr);
   	struct supplement_page *sp = get_sp (upage, thread_current ());
+//  printf("pagefault %d\n",j++);
   	if (sp != NULL)
   	{
+//  printf("pagefault sp is not null %d\n",j++);
 //		printf ("here?\n");
 		if(load_sp (upage))
 		{
 //			printf ("good!\n");
 			return 0;
 		}
+//  printf("pagefault sp is not null 2%d\n",j++);
   	}
- 	if (write)
+//  printf("pagefault %d\n",j++);
+ 	if (write && (!user || fault_addr >= (f->esp - 32)))
   	{
+// printf("pagefault stack growth %d\n",j++);
 		if (stack_growth (upage))
 		{
+  //printf("pagefault stack growth %d\n",j++);
 			return 0;
 		}
-		ASSERT (0);
+//		ASSERT (0);
   	}
   }
   /* To implement virtual memory, delete the rest of the function

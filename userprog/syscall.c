@@ -63,7 +63,7 @@ static bool is_valid_address_write (void *addr, void *esp)
 			return true;
 	}
 	
-	if (addr > esp - (void *) 0x00000020)
+	if (addr >= esp - 32)
 		return true;
 
 	return false;
@@ -231,25 +231,30 @@ syscall_handler (struct intr_frame *f)
 		}
 		case SYS_READ:
 		{
+	//		int j = 0;
+	//		printf ("read %d\n",j++);
 			if (!is_valid_address_read (f->esp + 4) || !is_valid_address_read (f->esp + 8) || !is_valid_address_read (f->esp + 12))
 			{
 				thread_current ()->exit_status = -1;
 				thread_exit ();
 			}	
+	//		printf ("read %d\n",j++);
 			int fd = *(int *)(f->esp + 4);
 			void *buffer = *(char **)(f->esp + 8);
 			int size = *(int *)(f->esp + 12);
 			
+	//		printf ("read %d\n",j++);
 			int i;
 			for (i = 0; i < size ; i ++)
 			{
-				if (!is_valid_address_write (buffer + i*4, f->esp))
+				if (!is_valid_address_write ((void *)(buffer + i), f->esp))
 				{
 					thread_current ()->exit_status = -1;
 					thread_exit ();
 				}
 			}
 			
+	//		printf ("read %d\n",j++);
 /*			if(!is_valid_address(buffer)){
 				thread_current()->exit_status = -1;
 				thread_exit();
@@ -259,9 +264,12 @@ syscall_handler (struct intr_frame *f)
 			else
 			{
 				file_lock_acquire ();
+	//		printf ("read %d\n",j++);
 				f->eax = file_read (get_file_list (fd)->file, buffer, size);
+	//		printf ("read %d\n",j++);
 				file_lock_release ();
 			}
+	//		printf ("read %d\n",j++);
 			break;
 		}
 		case SYS_WRITE:
@@ -325,9 +333,28 @@ syscall_handler (struct intr_frame *f)
 		}
 		case SYS_MMAP:
 		{
+			if (!is_valid_address_read (f->esp + 4) || !is_valid_address_read (f->esp + 8) || !is_valid_address_read (f->esp + 12))
+			{
+				f->eax = -1;
+				break;
+			}	
 			int fd = *(int *) (f->esp +4);
 			void *addr = *(void **)(f->esp +8);
 			int size;
+			
+			int i;
+			bool check = false;
+			for (i = 0; i < size ; i ++)
+			{
+				if (!is_valid_address_write ((void *)(addr + i*4), f->esp))
+				{
+					f->eax = -1;
+					check = true;
+					break;
+				}
+			}
+			if (check)
+				break;
 			//Check whether file descriptor is invalid
 			if(fd == 0 || fd == 1 || fd < 0)
 			{
@@ -360,7 +387,7 @@ syscall_handler (struct intr_frame *f)
 
 			off_t ofs = 0;
 			void *paddr = addr;
-			//Assume success	
+			//Assume success
 			f->eax = thread_current()->mapid;
 			//Devide File into Page
 			while(size >0)	
@@ -389,6 +416,7 @@ syscall_handler (struct intr_frame *f)
 				{
 
 					int mapid = thread_current()->mapid;
+					//ASSERT (mapid == 0);
 					//mmap_file insert into thread
 					struct mmap_file *mmap_file = malloc(sizeof(struct mmap_file));
 					mmap_file->mapid = mapid;
@@ -408,7 +436,10 @@ syscall_handler (struct intr_frame *f)
 		}
 		case SYS_MUNMAP:
 		{
-			
+			int mapid = *(int *) (f->esp +4);
+			bool success = unmap_file(mapid);
+			if(success == 0)
+				ASSERT(0);
 			break;
 		}
 	}			
