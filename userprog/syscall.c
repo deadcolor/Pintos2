@@ -10,6 +10,7 @@
 #include "threads/vaddr.h"
 #include "threads/synch.h"
 #include "vm/page.h"
+#include "threads/pte.h"
 
 static void syscall_handler (struct intr_frame *);
 
@@ -39,6 +40,51 @@ is_valid_address(void *address)
   else
 	return 1;		
 }
+
+static bool is_valid_address_write (void *addr, void *esp)
+{
+	if (!is_user_vaddr (addr))
+		return false;
+
+	uint32_t *ptr = pagedir_get_page (thread_current ()->pagedir, addr);
+	if (ptr != NULL)
+	{
+		uint32_t *pte = lookup_page (thread_current ()->pagedir, addr, false);//what shall i do
+		if ((*pte & PTE_W) != 0)
+			return true;
+		return false;
+	}
+	
+	void *upage = pg_round_down (addr);
+	struct supplement_page *sp = get_sp (upage, thread_current ());
+	if (sp != NULL)	
+	{
+		if (sp->writable)
+			return true;
+	}
+	
+	if (addr > esp - (void *) 0x00000020)
+		return true;
+
+	return false;
+}
+
+static bool is_valid_address_read (void *addr)
+{
+	if (!is_user_vaddr (addr))
+		return false;
+
+	uint32_t *ptr = pagedir_get_page (thread_current ()->pagedir, addr);
+	if (ptr != NULL)
+		return true;
+	
+	void *upage = pg_round_down (addr);
+	struct supplement_page *sp = get_sp (upage, thread_current ());
+	if (sp != NULL)
+		return true;
+	return false;
+}
+
 
 /* check valid string */
 static bool
@@ -185,15 +231,29 @@ syscall_handler (struct intr_frame *f)
 		}
 		case SYS_READ:
 		{
+			if (!is_valid_address_read (f->esp + 4) || !is_valid_address_read (f->esp + 8) || !is_valid_address_read (f->esp + 12))
+			{
+				thread_current ()->exit_status = -1;
+				thread_exit ();
+			}	
 			int fd = *(int *)(f->esp + 4);
 			void *buffer = *(char **)(f->esp + 8);
 			int size = *(int *)(f->esp + 12);
 			
-			if(!is_valid_address(buffer)){
-				thread_current()->exit_status = -1;
-		//		printf ("read-boundary\n");
-				thread_exit();
+			int i;
+			for (i = 0; i < size ; i ++)
+			{
+				if (!is_valid_address_write (buffer + i*4, f->esp))
+				{
+					thread_current ()->exit_status = -1;
+					thread_exit ();
+				}
 			}
+			
+/*			if(!is_valid_address(buffer)){
+				thread_current()->exit_status = -1;
+				thread_exit();
+			}*///we check stack growth
 			if (get_file_list (fd) == NULL)
 				f->eax = -1;
 			else
@@ -297,7 +357,11 @@ syscall_handler (struct intr_frame *f)
 				f->eax = -1;
 				break;
 			}
+
+			off_t ofs = 0;
 			void *paddr = addr;
+			//Assume success	
+			f->eax = thread_current()->mapid;
 			//Devide File into Page
 			while(size >0)	
 			{
@@ -323,10 +387,23 @@ syscall_handler (struct intr_frame *f)
 				}
 				else
 				{
+
+					int mapid = thread_current()->mapid;
+					//mmap_file insert into thread
+					struct mmap_file *mmap_file = malloc(sizeof(struct mmap_file));
+					mmap_file->mapid = mapid;
+					mmap_file->upage = pg_round_down(paddr);
+					list_push_back(&thread_current()->mmap_list, &mmap_file->elem);			
+
+					create_sp(upage,file,ofs,read_bytes,zero_bytes,true,2);
+					size = size - read_bytes;
+					paddr = paddr + PGSIZE;
+					ofs = ofs + PGSIZE;
 					
+						
 				}
 			}
-
+			thread_current()->mapid++;
 			break;
 		}
 		case SYS_MUNMAP:

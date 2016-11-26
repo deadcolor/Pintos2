@@ -43,6 +43,10 @@ bool create_sp (void *upage, struct file *file, off_t ofs, uint32_t read_bytes, 
 		sp->zero_bytes = zero_bytes;
 		sp->writable = writable;
 	}
+	if(type == 3)
+	{
+		sp->writable = writable;
+	}
 	list_push_back (&thread_current ()->spt, &sp->elem);
 	return true;
 }
@@ -68,6 +72,15 @@ bool load_sp (void *upage)
 			return false;
 		}
 		memset (kpage + sp->read_bytes, 0, sp->read_bytes);
+		if (!install_page (sp->upage, kpage, sp->writable))
+		{
+			delete_frame (kpage);
+			return false;
+		}
+		return true;
+	}
+	else if (sp->type == 3)
+	{
 		if (!install_page (sp->upage, kpage, sp->writable))
 		{
 			delete_frame (kpage);
@@ -116,6 +129,17 @@ bool evict_sp (void *upage, struct thread *thread)
 			return false;
 	}
 	pagedir_clear_page (thread->pagedir, upage);
+	return true;
+}
+
+bool stack_growth (void *upage)
+{
+	if (!create_sp (upage, NULL, 0, 0, 0, true, 3))
+		return false;
+	
+	if (!load_sp (upage))
+		return false;
+
 	return true;
 }
 

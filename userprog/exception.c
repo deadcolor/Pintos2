@@ -153,16 +153,28 @@ page_fault (struct intr_frame *f)
   user = (f->error_code & PF_U) != 0;
 
 //  printf ("pagefault!\n");
-  void *upage = pg_round_down (fault_addr);
-  struct supplement_page *sp = get_sp (upage, thread_current ());
-  if (sp != NULL)
+  
+  if (not_present && is_user_vaddr (fault_addr) && fault_addr > (void *)0x08048000)
   {
-//	printf ("here?\n");
-	if(load_sp (upage))
-	{
-//		printf ("good!\n");
-		return 0;
-	}
+	void *upage = pg_round_down (fault_addr);
+  	struct supplement_page *sp = get_sp (upage, thread_current ());
+  	if (sp != NULL)
+  	{
+//		printf ("here?\n");
+		if(load_sp (upage))
+		{
+//			printf ("good!\n");
+			return 0;
+		}
+  	}
+ 	if (write)
+  	{
+		if (stack_growth (upage))
+		{
+			return 0;
+		}
+		ASSERT (0);
+  	}
   }
   /* To implement virtual memory, delete the rest of the function
      body, and replace it with code that brings in the page to

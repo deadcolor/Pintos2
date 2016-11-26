@@ -109,11 +109,20 @@ struct thread
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
     struct list spt;
+    struct list mmap_list;		/* list for memory mapped file */
+    int mapid;				/* id for mapped file*/
 #endif
 
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
   };
+
+struct mmap_file
+{
+	int mapid;
+	void *upage;
+	struct list_elem elem;
+};
 
 struct thread_child
 {

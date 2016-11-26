@@ -492,6 +492,8 @@ init_thread (struct thread *t, const char *name, int priority)
   t->parent = running_thread ();
   //vm
   list_init (&t->spt);
+  list_init (&t->mmap_list);
+  t->mapid= 0;
 }
 
 /* Allocates a SIZE-byte frame at the top of thread T's stack and
