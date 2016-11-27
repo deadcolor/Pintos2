@@ -3,8 +3,9 @@
 
 void init_swap ();
 
-bool swap_read (int swap_num, void *kpage);
+void swap_read (size_t swap_num, void *kpage);
 
-bool swap_write (int swap_num, void *kpage);
+void swap_write (size_t swap_num, void *kpage);
 
-int get_swap_num ();
+size_t get_swap_num ();
+

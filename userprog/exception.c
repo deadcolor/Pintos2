@@ -153,7 +153,7 @@ page_fault (struct intr_frame *f)
   user = (f->error_code & PF_U) != 0;
 
 //  printf ("pagefault!\n");
-  int j = 0;
+//  int j = 0;
 //  printf("pagefault %d\n",j++);
   if (not_present && is_user_vaddr (fault_addr) && fault_addr > (void *)0x08048000)
   {

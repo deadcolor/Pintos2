@@ -43,7 +43,7 @@ void *make_frame ()
 	void *kpage = palloc_get_page (PAL_USER);
 	if (kpage == NULL)
 	{
-//		printf ("no space\n");
+	//	printf ("no space\n");
 		if(!frame_evict ())
 			return NULL;
 		kpage = palloc_get_page (PAL_USER);
@@ -103,7 +103,11 @@ bool frame_evict ()
 	f = list_entry (e, struct frame, elem);
 	do
 	{
-		if (pagedir_is_accessed (f->thread->pagedir, f->upage))
+		struct supplement_page * sp = get_sp (f->upage, f->thread);
+		if (sp->lock)
+		{
+		}
+		else if (pagedir_is_accessed (f->thread->pagedir, f->upage))
 		{
 			pagedir_set_accessed (f->thread->pagedir, f->upage, false);
 			e = list_next (e);
@@ -114,7 +118,7 @@ bool frame_evict ()
 		}
 		else
 		{
-//			printf ("not accessed \n");
+		//	printf ("not accessed \n");
 			e = list_next (e);
 			if ( e == list_end (&frame_table))
 			{
@@ -122,10 +126,12 @@ bool frame_evict ()
 			}
 			if (evict_sp (f->upage, f->thread))
 			{
+		//		printf("pass evict sp\n");
 				delete_frame (f->kpage);
 				clock_frame = list_entry (e, struct frame, elem);
 				return true;
 			}
+//			printf ("evict fail\n");
 		}
 		f = list_entry (e, struct frame, elem);
 	}while (true/*f != clock_frame*/);

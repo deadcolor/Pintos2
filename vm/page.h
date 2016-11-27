@@ -11,7 +11,7 @@ struct supplement_page
 	uint32_t read_bytes;
 	uint32_t zero_bytes;
 	bool writable;
-	int sector_num;
+	size_t sector_num;
 	bool lock;
 	struct list_elem elem;
 };

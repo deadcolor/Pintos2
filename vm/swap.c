@@ -14,26 +14,26 @@ void init_swap ()
 	bitmap_set_all (swap_table, 0);
 }
 
-bool swap_read (int swap_num, void *kpage)
+void swap_read (size_t swap_num, void *kpage)
 {
-	int i;
+	size_t i;
 	for (i = 0; i < PGSIZE/BLOCK_SECTOR_SIZE; i++)
 	{
-		block_read (swap_block, swap_num * PGSIZE / BLOCK_SECTOR_SIZE + i, kpage + i * BLOCK_SECTOR_SIZE);
+		block_read (swap_block, swap_num * PGSIZE/BLOCK_SECTOR_SIZE + i, kpage + i * BLOCK_SECTOR_SIZE);
 	}
 	bitmap_flip(swap_table, swap_num);
 }
 
-bool swap_write (int swap_num, void *kpage)
+void swap_write (size_t swap_num, void *kpage)
 {
-	int i;
+	size_t i;
 	for (i = 0; i < PGSIZE/BLOCK_SECTOR_SIZE; i++)
 	{
 		block_write (swap_block, swap_num * PGSIZE/BLOCK_SECTOR_SIZE + i, kpage + i * BLOCK_SECTOR_SIZE);
 	}
 }
 
-int get_swap_num ()
+size_t get_swap_num ()
 {
 	return bitmap_scan_and_flip (swap_table, 0, 1, 0);
 }
