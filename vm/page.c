@@ -5,6 +5,8 @@
 #include "filesys/file.h"
 #include "userprog/process.h"
 #include "threads/thread.h"
+#include "vm/swap.h"
+#include "threads/vaddr.h"
 
 struct supplement_page *get_sp (void *upage, struct thread *thread)
 {
@@ -16,14 +18,12 @@ struct supplement_page *get_sp (void *upage, struct thread *thread)
 		sp = list_entry (e, struct supplement_page, elem);
 		if(sp->upage == upage)
 		{
-		//	ASSERT(0);
 			break;
 		}
 		sp = NULL;
 	}
 	if(sp != NULL)
 	{
-//		printf ("hi!\n");
 		return sp;
 	}
 	return NULL;
@@ -57,39 +57,28 @@ bool create_sp (void *upage, struct file *file, off_t ofs, uint32_t read_bytes, 
 bool load_sp (void *upage)
 {
 //	printf ("load start\n");
-//	int j = 0;
-//	printf ("load start %d\n",j++);
 	struct supplement_page *sp = get_sp (upage, thread_current ());
-//	printf ("load %d\n", j++);
 	if (sp == NULL)
 	{
-//		printf ("dye here?\n");
 		return false;
 	}
 	sp->lock = true;
-//	printf ("load %d\n", j++);
 	void *kpage = make_frame_upage (upage);
-//	printf ("load %d\n", j++);
 	if(kpage == NULL)
 	{
-//	printf ("load dye?%d\n", j++);
 		return false;
 	}
-//	sp->kpage = kpage;
 	if (sp->type == 1 || sp->type == 2)
 	{
-//		printf ("load type 1,2\n");
 		file_seek (sp->file, sp->ofs);
 		if (file_read (sp->file, kpage, sp->read_bytes) != (int) sp->read_bytes)
 		{
 			delete_frame (kpage);
-//	printf ("load dye here %d\n", j++);
 			return false;
 		}
 		memset (kpage + sp->read_bytes, 0, sp->zero_bytes);
 		if (!install_page (sp->upage, kpage, sp->writable))
 		{
-//	printf ("load no dye%d\n", j++);
 			delete_frame (kpage);
 			return false;
 		}
@@ -98,43 +87,26 @@ bool load_sp (void *upage)
 	}
 	else if (sp->type == 3)
 	{
-//		printf ("load type 3\n");
-//	printf ("load type3 %d\n", j++);
 		if (!install_page (sp->upage, kpage, sp->writable))
 		{
-//	printf ("load type3 dye %d\n", j++);
 			delete_frame (kpage);
 			return false;
 		}
+		memset (kpage, 0, PGSIZE);
 		sp->lock = false;
 		return true;
 	}
 	else if (sp->type == 4)
 	{
-//		printf ("load type 4\n");
-//	printf ("load type4 %d\n", j++);
-	/*	if (swap_read(sp->sector_num, kpage))
-		{
-			if(!install_page (sp->upage, kpage, sp->writable))
-			{
-//			printf ("load type4 dye %d\n", j++);
-				delete_frame (kpage);
-				return false;
-			}
-			return true;
-		}*/
 		if(install_page (sp->upage, kpage, sp->writable))
 		{
 			swap_read(sp->sector_num, kpage);
 			sp->lock = false;
 			return true;
 		}
-//	printf ("load type4 dye2 %d\n", j++);
 		delete_frame (kpage);
 		return false;
 	}
-//	printf ("load fail\n");
-//	printf ("load just dye %d\n", j++);
 	delete_frame (kpage);
 	return false;
 }
@@ -146,7 +118,6 @@ bool evict_sp (void *upage, struct thread *thread)
 	void *kpage = pagedir_get_page (thread->pagedir, upage);
 	if (sp->type == 1)
 	{
-//		printf ("evict type 1\n");
 		if (pagedir_is_dirty (thread->pagedir, upage))
 		{
 			pagedir_set_dirty (thread->pagedir, upage, false);
@@ -159,7 +130,6 @@ bool evict_sp (void *upage, struct thread *thread)
 	}
 	else if (sp->type == 2)
 	{
-//		printf ("evict type 2\n");
 		if (pagedir_is_dirty (thread->pagedir, upage))
 		{
 			pagedir_set_dirty (thread->pagedir, upage, false);
@@ -169,19 +139,16 @@ bool evict_sp (void *upage, struct thread *thread)
 	}
 	else if (sp->type == 3 || sp->type == 4)
 	{
-//		printf ("evict type 3, 4 \n");
 		sp->type = 4;
 		sp->sector_num = get_swap_num ();
 		if (sp->sector_num == BITMAP_ERROR)
 		{
-//			printf ("evict type 3,4 fail\n");
 			return false;
 		}
 		swap_write(sp->sector_num, kpage);
 	}
 	else
 	{
-		printf ("fuck\n");
 		return false;
 	}
 	pagedir_clear_page (thread->pagedir, upage);
@@ -207,6 +174,13 @@ void close_all_page ()
 	for ( e = list_begin (&thread_current ()->spt); e != list_end (&thread_current ()->spt); )
 	{
 		sp = list_entry (e, struct supplement_page, elem);
+		if(sp->type == 4)
+		{
+			if (pagedir_get_page (thread_current ()->pagedir, sp->upage) == NULL)
+			{
+				free_swap_table (sp->sector_num);	
+			}
+		}
 		e = list_next (e);
 		list_remove (&sp->elem);
 		pagedir_clear_page (thread_current ()->pagedir, sp->upage);
@@ -243,7 +217,6 @@ void close_file(void *upage)
 	delete_frame(kpage);
 
 	pagedir_clear_page(thread_current()->pagedir, sp->upage);
-	//TODO:: frame_clear? close file?
 	list_remove(&sp->elem); 
 	free(sp);
 

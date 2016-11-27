@@ -49,7 +49,7 @@ static bool is_valid_address_write (void *addr, void *esp)
 	uint32_t *ptr = pagedir_get_page (thread_current ()->pagedir, addr);
 	if (ptr != NULL)
 	{
-		uint32_t *pte = lookup_page (thread_current ()->pagedir, addr, false);//what shall i do
+		uint32_t *pte = lookup_page (thread_current ()->pagedir, addr, false);
 		if ((*pte & PTE_W) != 0)
 			return true;
 		return false;
@@ -231,19 +231,15 @@ syscall_handler (struct intr_frame *f)
 		}
 		case SYS_READ:
 		{
-	//		int j = 0;
-	//		printf ("read %d\n",j++);
 			if (!is_valid_address_read (f->esp + 4) || !is_valid_address_read (f->esp + 8) || !is_valid_address_read (f->esp + 12))
 			{
 				thread_current ()->exit_status = -1;
 				thread_exit ();
 			}	
-	//		printf ("read %d\n",j++);
 			int fd = *(int *)(f->esp + 4);
 			void *buffer = *(char **)(f->esp + 8);
 			int size = *(int *)(f->esp + 12);
 			
-	//		printf ("read %d\n",j++);
 			int i;
 			for (i = 0; i < size ; i ++)
 			{
@@ -254,22 +250,14 @@ syscall_handler (struct intr_frame *f)
 				}
 			}
 			
-	//		printf ("read %d\n",j++);
-/*			if(!is_valid_address(buffer)){
-				thread_current()->exit_status = -1;
-				thread_exit();
-			}*///we check stack growth
 			if (get_file_list (fd) == NULL)
 				f->eax = -1;
 			else
 			{
 				file_lock_acquire ();
-	//		printf ("read %d\n",j++);
 				f->eax = file_read (get_file_list (fd)->file, buffer, size);
-	//		printf ("read %d\n",j++);
 				file_lock_release ();
 			}
-	//		printf ("read %d\n",j++);
 			break;
 		}
 		case SYS_WRITE:

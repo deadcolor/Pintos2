@@ -37,3 +37,8 @@ size_t get_swap_num ()
 {
 	return bitmap_scan_and_flip (swap_table, 0, 1, 0);
 }
+
+void free_swap_table (size_t swap_num)
+{
+	bitmap_flip(swap_table, swap_num);
+}
