@@ -200,9 +200,18 @@ bool stack_growth (void *upage)
 	return true;
 }
 
-bool close_all ()
+void close_all_page ()
 {
-	
+	struct list_elem *e;
+	struct supplement_page *sp;
+	for ( e = list_begin (&thread_current ()->spt); e != list_end (&thread_current ()->spt); )
+	{
+		sp = list_entry (e, struct supplement_page, elem);
+		e = list_next (e);
+		list_remove (&sp->elem);
+		pagedir_clear_page (thread_current ()->pagedir, sp->upage);
+		free (sp);
+	}	
 }
 
 

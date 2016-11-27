@@ -22,5 +22,5 @@ bool create_sp (void *upage, struct file *file, off_t ofs, uint32_t read_bytes, 
 
 bool load_sp (void *upage);
 
-bool close_all ();
+void close_all_page ();
 

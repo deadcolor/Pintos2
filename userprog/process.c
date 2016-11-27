@@ -196,6 +196,8 @@ process_exit (void)
 	struct mmap_file *file = list_entry(e,struct mmap_file,elem);
 	unmap_file(file->mapid); 
   }
+  close_all_page();
+  close_all_frame ();		
 	
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
@@ -412,8 +414,10 @@ load (const char *file_name, void (**eip) (void), void **esp)
 
   /* Set up stack. */
   if (!setup_stack (esp, file_name))
+{
+//ASSERT (0);
     goto done;
-
+}
   /* Start address. */
   *eip = (void (*) (void)) ehdr.e_entry;
 
@@ -426,7 +430,10 @@ load (const char *file_name, void (**eip) (void), void **esp)
  done:
   /* We arrive here whether the load is successful or not. */
   if(!success)
+  {
+//	ASSERT (0);
   	file_close (file);
+  }
   file_lock_release ();
   return success;
 }
@@ -536,7 +543,10 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
         }
 */
 	if (!create_sp (upage, file, ofs, page_read_bytes, page_zero_bytes, writable, 1))
+	{
+		ASSERT (0);
 		return false;
+	}
       /* Advance. */
       read_bytes -= page_read_bytes;
       zero_bytes -= page_zero_bytes;
@@ -618,8 +628,14 @@ setup_stack (void **esp, const char* file_name)
 {
   uint8_t *kpage;
   bool success = false;
-
-  kpage = palloc_get_page (PAL_USER | PAL_ZERO);
+  
+  void *upage = (uint8_t *) PHYS_BASE - PGSIZE;
+  if (!create_sp (upage, NULL, 0, 0, 0, true, 3))
+	ASSERT(0);
+  success = true;
+  *esp = PHYS_BASE;
+  parse_line (file_name, esp);
+/*  kpage = palloc_get_page (PAL_USER | PAL_ZERO);
   if (kpage != NULL) 
     {
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
@@ -630,7 +646,9 @@ setup_stack (void **esp, const char* file_name)
       }
       else
         palloc_free_page (kpage);
-    }
+    }*/
+/*   else
+	ASSERT(0);*/
   return success;
 }
 

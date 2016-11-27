@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include "threads/thread.h"
 #include "threads/palloc.h"
+#include "threads/synch.h"
 
 struct list frame_table;
 
@@ -17,9 +18,12 @@ struct frame
 	struct list_elem elem;
 };
 
+struct lock frame_lock;
+
 void frame_init ()
 {
 	list_init (&frame_table);
+	lock_init (&frame_lock);
 	clock_frame = NULL;
 }
 
@@ -54,10 +58,14 @@ void *make_frame ()
 
 void *make_frame_upage (void *upage)
 {
+	lock_acquire (&frame_lock);
 //	printf ("make_frame_upage start\n");
 	void *kpage = make_frame ();
 	if (kpage == NULL)
+	{
+		lock_release (&frame_lock);
 		return NULL;
+	}
 //	printf ("make_frame_upage donr\n");
 	struct frame *frame = malloc(sizeof(struct frame));
 	frame->kpage = kpage;
@@ -66,11 +74,13 @@ void *make_frame_upage (void *upage)
 	list_push_back (&frame_table, &frame->elem);
 	if (clock_frame == NULL)
 		clock_frame = frame;
+	lock_release (&frame_lock);
 	return kpage;	
 }
 
 void *get_frame_upage (void *upage, struct thread *thread)
 {
+	lock_acquire (&frame_lock);
 	struct list_elem *e;
 	struct frame *f;
 	for (e = list_begin (&frame_table); e != list_end (&frame_table); e = list_next (e))
@@ -82,7 +92,11 @@ void *get_frame_upage (void *upage, struct thread *thread)
 	}
 	
 	if ( f == NULL)
+	{
+		lock_release (&frame_lock);
 		return NULL;	
+	}
+	lock_release (&frame_lock);
 	return f->kpage;
 }
 
@@ -92,6 +106,23 @@ void delete_frame (void *kpage)
 	palloc_free_page (kpage);
 	list_remove (&f->elem);
 	free (f);
+}
+
+void close_all_frame ()
+{
+	struct list_elem *e;
+	struct frame *f;
+	for ( e = list_begin (&frame_table); e != list_end (&frame_table); )
+	{
+		f = list_entry (e, struct frame, elem);
+		e = list_next (e);
+		if (f->thread == thread_current ())
+		{
+			list_remove (&f->elem);
+			palloc_free_page (f->kpage);
+			free (f);
+		}
+	}
 }
 
 bool frame_evict ()
@@ -106,6 +137,9 @@ bool frame_evict ()
 		struct supplement_page * sp = get_sp (f->upage, f->thread);
 		if (sp->lock)
 		{
+			e = list_next (e);
+			if (e == list_end (&frame_table))
+				e = list_begin (&frame_table);
 		}
 		else if (pagedir_is_accessed (f->thread->pagedir, f->upage))
 		{
