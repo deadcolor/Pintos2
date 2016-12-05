@@ -198,13 +198,12 @@ void close_file(void *upage)
 	bool dirted = 0;
 	if(sp->writable == true && pagedir_is_dirty(thread_current()->pagedir,sp->upage) && sp->type == 2)
 		dirted = 1;
-	
-	void *kpage = get_frame_upage(upage,thread_current());
+	void *kpage = pagedir_get_page (thread_current()->pagedir, upage);
 	if(kpage == NULL)
 	{
 		bool success = load_sp(upage);
 		if(success)
-			kpage = get_frame_upage(upage,thread_current());
+			kpage = pagedir_get_page (thread_current()->pagedir, upage);
 		else
 			ASSERT(0);
 	}

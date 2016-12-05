@@ -74,28 +74,6 @@ void *make_frame_upage (void *upage)
 	return kpage;	
 }
 
-void *get_frame_upage (void *upage, struct thread *thread)
-{
-	lock_acquire (&frame_lock);
-	struct list_elem *e;
-	struct frame *f;
-	for (e = list_begin (&frame_table); e != list_end (&frame_table); e = list_next (e))
-	{
-		f = list_entry (e, struct frame, elem);
-		if(f->upage == upage && f->thread == thread)
-			break;
-		f = NULL;
-	}
-	
-	if ( f == NULL)
-	{
-		lock_release (&frame_lock);
-		return NULL;	
-	}
-	lock_release (&frame_lock);
-	return f->kpage;
-}
-
 void delete_frame (void *kpage)
 {
 	struct frame *f = get_frame (kpage);
@@ -125,7 +103,10 @@ bool frame_evict ()
 {
 	struct list_elem *e;
 	struct frame *f;
-	e = &clock_frame->elem;
+	if (clock_frame == NULL)
+		e= list_begin (&frame_table);
+	else
+		e = &clock_frame->elem;
 	f = list_entry (e, struct frame, elem);
 	do
 	{
@@ -161,13 +142,6 @@ bool frame_evict ()
 		}
 		f = list_entry (e, struct frame, elem);
 	}while (true/*f != clock_frame*/);
-//	printf ("can't evict\n");
-	/*for (e = list_begin (&frame_table), i = 0; e != list_end (&frame_table); e = list_next (e))
-	{
-		if (i>=clock_num)
-		f = list_entry (e, struct frame, elem);
-			
-	}*/
 	return false;
 }
 
