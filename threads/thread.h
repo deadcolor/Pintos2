@@ -92,6 +92,9 @@ struct thread
     int priority;                       /* Priority. */
     struct list_elem allelem;           /* List element for all threads list. */
 
+    /* Project 1 - timer variable*/ 
+    int64_t wakeup_tick;
+
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
 
